@@ -16,7 +16,7 @@ export default async function WizardPage() {
   const { data: targets } = await supabase
     .from("rda_targets")
     .select(
-      "age, gender, weight_kg, height_cm, workout_level, calories_target, protein_target, carbs_target, fats_target",
+      "age, gender, weight_kg, height_cm, workout_level, weight_goal, calories_target, protein_target, carbs_target, fats_target",
     )
     .eq("user_id", session.user.id)
     .maybeSingle();
@@ -33,6 +33,7 @@ export default async function WizardPage() {
             weight: targets?.weight_kg,
             height: targets?.height_cm,
             workoutLevel: targets?.workout_level,
+            weightGoal: targets?.weight_goal,
           }}
         />
 

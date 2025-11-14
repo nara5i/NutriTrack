@@ -137,8 +137,48 @@ export async function logFoodAction(
       return { error: "Please provide fats for custom entries." };
     }
 
+    // Save custom food to foods table
+    const { data: foodData, error: foodError } = await supabase
+      .from("foods")
+      .insert({
+        name,
+        serving_size_grams: servingSize ?? 100,
+        calories,
+        protein,
+        carbs,
+        fats,
+        fiber: fiber ?? null,
+      })
+      .select("id")
+      .single();
+
+    let foodId: string | null = null;
+    if (foodError) {
+      // If insert fails (e.g., duplicate), try to find existing food
+      const { data: existingFood } = await supabase
+        .from("foods")
+        .select("id")
+        .eq("name", name)
+        .eq("calories", calories)
+        .eq("protein", protein)
+        .eq("carbs", carbs)
+        .eq("fats", fats)
+        .maybeSingle();
+      
+      if (existingFood) {
+        foodId = existingFood.id;
+      } else {
+        // If we can't save to foods table, still log it as custom
+        console.warn("Could not save custom food to foods table:", foodError.message);
+      }
+    } else {
+      foodId = foodData.id;
+    }
+
+    // Log the food entry
     const { error: insertError } = await supabase.from("food_logs").insert({
       user_id: user.id,
+      food_id: foodId,
       is_custom: true,
       custom_name: name,
       custom_serving_size_grams: servingSize ?? null,
@@ -158,7 +198,7 @@ export async function logFoodAction(
 
     revalidatePath("/log-food");
     revalidatePath("/dashboard");
-    return { success: "Custom food logged." };
+    return { success: "Custom food logged and saved to database." };
   }
 
   return { error: "Please select how you want to log your food." };

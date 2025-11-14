@@ -7,6 +7,7 @@ import {
   calculateRdaTargets,
   type Gender,
   type WorkoutLevel,
+  type WeightGoal,
 } from "@/lib/rda/calculations";
 
 type WizardState = {
@@ -37,6 +38,7 @@ export async function submitWizardAction(
   const height = parseNumber(formData.get("height"));
   const gender = formData.get("gender") as Gender | null;
   const workoutLevel = formData.get("workoutLevel") as WorkoutLevel | null;
+  const weightGoal = (formData.get("weightGoal") as WeightGoal | null) ?? "maintain";
 
   if (
     !age ||
@@ -55,6 +57,7 @@ export async function submitWizardAction(
     weightKg: weight,
     heightCm: height,
     workoutLevel,
+    weightGoal,
   });
 
   const { error } = await supabase
@@ -67,6 +70,7 @@ export async function submitWizardAction(
         weight_kg: weight,
         height_cm: height ?? null,
         workout_level: workoutLevel,
+        weight_goal: weightGoal,
         calories_target: targets.calories,
         protein_target: targets.protein,
         carbs_target: targets.carbs,

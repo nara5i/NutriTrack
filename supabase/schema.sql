@@ -39,6 +39,7 @@ create table if not exists public.rda_targets (
   weight_kg numeric(6,2) not null,
   height_cm numeric(6,2),
   workout_level text not null check (workout_level in ('light', 'moderate', 'heavy')),
+  weight_goal text check (weight_goal in ('maintain', 'loss', 'gain')),
   calories_target numeric(10,2) not null,
   protein_target numeric(10,2) not null,
   carbs_target numeric(10,2) not null,

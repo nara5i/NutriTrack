@@ -2,17 +2,46 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getServerSupabaseClient } from "@/lib/supabase/server";
 import { Navigation } from "../_components/Navigation";
+import { MacroChart } from "./_components/MacroChart";
+import { TrendChart } from "./_components/TrendChart";
 
-function startOfTodayIso() {
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
-  return today.toISOString();
+type FoodLogRow = {
+  calories: number | null;
+  protein: number | null;
+  carbs: number | null;
+  fats: number | null;
+  consumed_at: string;
+};
+
+function startOfDay(date: Date) {
+  const copy = new Date(date);
+  copy.setUTCHours(0, 0, 0, 0);
+  return copy;
 }
 
-function endOfTodayIso() {
-  const today = new Date();
-  today.setUTCHours(23, 59, 59, 999);
-  return today.toISOString();
+function endOfDay(date: Date) {
+  const copy = new Date(date);
+  copy.setUTCHours(23, 59, 59, 999);
+  return copy;
+}
+
+function daysAgo(amount: number) {
+  const date = new Date();
+  date.setDate(date.getDate() - amount);
+  return date;
+}
+
+function dateKey(value: Date | string) {
+  const date = new Date(value);
+  return date.toISOString().slice(0, 10);
+}
+
+function formatLabel(date: Date) {
+  return date.toLocaleDateString("en-US", { weekday: "short" });
+}
+
+function formatShortDate(date: Date) {
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 export default async function DashboardPage() {
@@ -25,6 +54,9 @@ export default async function DashboardPage() {
     redirect("/login?redirectTo=/dashboard");
   }
 
+  const rangeStartIso = startOfDay(daysAgo(6)).toISOString();
+  const rangeEndIso = endOfDay(new Date()).toISOString();
+
   const [targetsResult, logsResult] = await Promise.all([
     supabase
       .from("rda_targets")
@@ -35,50 +67,86 @@ export default async function DashboardPage() {
       .maybeSingle(),
     supabase
       .from("food_logs")
-      .select("calories, protein, carbs, fats")
+      .select("calories, protein, carbs, fats, consumed_at")
       .eq("user_id", session.user.id)
-      .gte("consumed_at", startOfTodayIso())
-      .lte("consumed_at", endOfTodayIso()),
+      .gte("consumed_at", rangeStartIso)
+      .lte("consumed_at", rangeEndIso)
+      .order("consumed_at", { ascending: true }),
   ]);
 
   const targets = targetsResult.data ?? null;
-  const totals = logsResult.data?.reduce(
-    (acc, entry) => ({
-      calories: acc.calories + Number(entry.calories ?? 0),
-      protein: acc.protein + Number(entry.protein ?? 0),
-      carbs: acc.carbs + Number(entry.carbs ?? 0),
-      fats: acc.fats + Number(entry.fats ?? 0),
-    }),
+  const logs = (logsResult.data as FoodLogRow[] | null) ?? [];
+  const todayKey = dateKey(new Date());
+
+  const todaysTotals = logs.reduce(
+    (acc, entry) => {
+      if (dateKey(entry.consumed_at) !== todayKey) {
+        return acc;
+      }
+
+      return {
+        calories: acc.calories + Number(entry.calories ?? 0),
+        protein: acc.protein + Number(entry.protein ?? 0),
+        carbs: acc.carbs + Number(entry.carbs ?? 0),
+        fats: acc.fats + Number(entry.fats ?? 0),
+      };
+    },
     { calories: 0, protein: 0, carbs: 0, fats: 0 },
-  ) ?? { calories: 0, protein: 0, carbs: 0, fats: 0 };
+  );
+
+  const dailyMap = logs.reduce(
+    (map, entry) => {
+      const key = dateKey(entry.consumed_at);
+      if (!map.has(key)) {
+        map.set(key, { calories: 0, protein: 0 });
+      }
+      const current = map.get(key)!;
+      current.calories += Number(entry.calories ?? 0);
+      current.protein += Number(entry.protein ?? 0);
+      return map;
+    },
+    new Map<string, { calories: number; protein: number }>(),
+  );
+
+  const trendData = Array.from({ length: 7 }).map((_, index) => {
+    const date = daysAgo(6 - index);
+    const key = dateKey(date);
+    const aggregate = dailyMap.get(key) ?? { calories: 0, protein: 0 };
+    return {
+      label: formatLabel(date),
+      dateLabel: formatShortDate(date),
+      calories: Number(aggregate.calories.toFixed(0)),
+      protein: Number(aggregate.protein.toFixed(0)),
+    };
+  });
 
   const macros = [
     {
       label: "Calories",
       key: "calories" as const,
       unit: "kcal",
-      total: totals.calories,
+      total: todaysTotals.calories,
       target: targets?.calories_target ?? null,
     },
     {
       label: "Protein",
       key: "protein" as const,
       unit: "g",
-      total: totals.protein,
+      total: todaysTotals.protein,
       target: targets?.protein_target ?? null,
     },
     {
       label: "Carbs",
       key: "carbs" as const,
       unit: "g",
-      total: totals.carbs,
+      total: todaysTotals.carbs,
       target: targets?.carbs_target ?? null,
     },
     {
       label: "Fats",
       key: "fats" as const,
       unit: "g",
-      total: totals.fats,
+      total: todaysTotals.fats,
       target: targets?.fats_target ?? null,
     },
   ];
@@ -175,11 +243,19 @@ export default async function DashboardPage() {
         </header>
 
         <section className="rounded-3xl bg-white p-6 shadow-lg shadow-slate-200">
+          <TrendChart data={trendData} />
+        </section>
+
+        <section className="rounded-3xl bg-white p-6 shadow-lg shadow-slate-200">
+          <MacroChart macros={macros} />
+        </section>
+
+        <section className="rounded-3xl bg-white p-6 shadow-lg shadow-slate-200">
           <h2 className="text-lg font-semibold text-slate-900">Next steps</h2>
           <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-slate-600">
             <li>Log meals throughout the day to keep this dashboard current.</li>
             <li>Adjust your RDA targets as goals change or activity shifts.</li>
-            <li>Check back soon for detailed charts and weekly summaries.</li>
+            <li>Track your progress over time with the chart above.</li>
           </ul>
         </section>
       </div>

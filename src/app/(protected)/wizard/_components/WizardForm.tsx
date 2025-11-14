@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { calculateRdaTargets } from "@/lib/rda/calculations";
+import { calculateRdaTargets, type WeightGoal } from "@/lib/rda/calculations";
 import { submitWizardAction } from "../actions";
 
 const initialState = { error: undefined as string | undefined };
@@ -14,6 +14,7 @@ type WizardFormProps = {
     height?: number | null;
     gender?: string | null;
     workoutLevel?: string | null;
+    weightGoal?: string | null;
   };
 };
 
@@ -48,6 +49,9 @@ export function WizardForm({ defaultValues }: WizardFormProps) {
   const [workoutLevel, setWorkoutLevel] = useState<string>(
     defaultValues?.workoutLevel ?? "light",
   );
+  const [weightGoal, setWeightGoal] = useState<string>(
+    defaultValues?.weightGoal ?? "maintain",
+  );
 
   useEffect(() => {
     if (state?.error) {
@@ -71,8 +75,9 @@ export function WizardForm({ defaultValues }: WizardFormProps) {
       weightKg: parsedWeight,
       heightCm: Number.isFinite(parsedHeight) ? parsedHeight : undefined,
       workoutLevel: workoutLevel as any,
+      weightGoal: weightGoal as WeightGoal,
     });
-  }, [age, weight, height, gender, workoutLevel]);
+  }, [age, weight, height, gender, workoutLevel, weightGoal]);
 
   return (
     <form
@@ -189,6 +194,36 @@ export function WizardForm({ defaultValues }: WizardFormProps) {
             <option value="heavy">Heavy (5+ workouts / week)</option>
           </select>
         </label>
+
+        <div className="block md:col-span-2">
+          <span className="text-sm font-medium text-slate-700">Weight Goal</span>
+          <div className="mt-1 grid gap-2 sm:grid-cols-3">
+            {[
+              { label: "Weight Loss", value: "loss" },
+              { label: "Maintain Weight", value: "maintain" },
+              { label: "Weight Gain", value: "gain" },
+            ].map((option) => (
+              <label
+                key={option.value}
+                className={`cursor-pointer rounded-xl border px-4 py-3 text-center text-sm font-medium transition ${
+                  weightGoal === option.value
+                    ? "border-emerald-400 bg-emerald-50 text-emerald-700"
+                    : "border-slate-200 bg-slate-50 text-slate-600 hover:border-emerald-200 hover:bg-white"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="weightGoal"
+                  value={option.value}
+                  checked={weightGoal === option.value}
+                  onChange={(event) => setWeightGoal(event.target.value)}
+                  className="sr-only"
+                />
+                {option.label}
+              </label>
+            ))}
+          </div>
+        </div>
       </div>
 
       {preview ? (

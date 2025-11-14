@@ -1,12 +1,15 @@
 export type WorkoutLevel = "light" | "moderate" | "heavy";
 export type Gender = "male" | "female" | "other";
 
+export type WeightGoal = "maintain" | "loss" | "gain";
+
 export type RdaInput = {
   age: number;
   gender: Gender;
   weightKg: number;
   heightCm?: number | null;
   workoutLevel: WorkoutLevel;
+  weightGoal?: WeightGoal;
 };
 
 export type RdaTargets = {
@@ -37,12 +40,39 @@ function roundToNearestFive(value: number) {
 export function calculateRdaTargets(input: RdaInput): RdaTargets {
   const bmr = calculateBmr(input);
   const activityMultiplier = activityMultipliers[input.workoutLevel];
-  const calories = bmr * activityMultiplier;
+  let calories = bmr * activityMultiplier;
 
-  // Macro distribution: 30% protein, 45% carbs, 25% fats
-  const proteinCalories = calories * 0.3;
-  const carbCalories = calories * 0.45;
-  const fatCalories = calories * 0.25;
+  // Adjust calories based on weight goal
+  const weightGoal = input.weightGoal ?? "maintain";
+  if (weightGoal === "loss") {
+    // Deficit of ~500 calories per day (1 lb per week)
+    calories = calories - 500;
+  } else if (weightGoal === "gain") {
+    // Surplus of ~500 calories per day (1 lb per week)
+    calories = calories + 500;
+  }
+  // "maintain" keeps calories as calculated
+
+  // Adjust macro distribution based on weight goal
+  let proteinRatio = 0.3;
+  let carbRatio = 0.45;
+  let fatRatio = 0.25;
+
+  if (weightGoal === "loss") {
+    // Higher protein for muscle preservation during weight loss
+    proteinRatio = 0.35;
+    carbRatio = 0.40;
+    fatRatio = 0.25;
+  } else if (weightGoal === "gain") {
+    // Higher carbs for energy during weight gain
+    proteinRatio = 0.25;
+    carbRatio = 0.50;
+    fatRatio = 0.25;
+  }
+
+  const proteinCalories = calories * proteinRatio;
+  const carbCalories = calories * carbRatio;
+  const fatCalories = calories * fatRatio;
 
   return {
     calories: Math.round(calories),

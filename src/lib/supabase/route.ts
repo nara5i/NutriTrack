@@ -1,5 +1,6 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import type { NextRequest, NextResponse } from "next/server";
+import { getSupabaseCredentials } from "./env";
 
 export type PendingCookie = {
   name: string;
@@ -7,24 +8,13 @@ export type PendingCookie = {
   options: CookieOptions;
 };
 
-function getSupabaseConfig() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error("Supabase environment variables are not configured.");
-  }
-
-  return { supabaseUrl, supabaseAnonKey };
-}
-
 export function createSupabaseRouteClient(
   request: NextRequest,
   pendingCookies: PendingCookie[],
 ) {
-  const { supabaseUrl, supabaseAnonKey } = getSupabaseConfig();
+  const { url, anonKey } = getSupabaseCredentials();
 
-  return createServerClient(supabaseUrl, supabaseAnonKey, {
+  return createServerClient(url, anonKey, {
     cookies: {
       getAll() {
         return request.cookies.getAll().map(({ name, value }) => ({
