@@ -2,7 +2,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getServerSupabaseClient } from "@/lib/supabase/server";
 import { Navigation } from "../_components/Navigation";
-import { MacroChart } from "./_components/MacroChart";
 import { TrendChart } from "./_components/TrendChart";
 
 type FoodLogRow = {
@@ -243,11 +242,11 @@ export default async function DashboardPage() {
         </header>
 
         <section className="rounded-3xl bg-white p-6 shadow-lg shadow-slate-200">
-          <TrendChart data={trendData} />
-        </section>
-
-        <section className="rounded-3xl bg-white p-6 shadow-lg shadow-slate-200">
-          <MacroChart macros={macros} />
+          <TrendChart
+            data={trendData}
+            caloriesTarget={targets?.calories_target ?? null}
+            proteinTarget={targets?.protein_target ?? null}
+          />
         </section>
 
         <section className="rounded-3xl bg-white p-6 shadow-lg shadow-slate-200">
