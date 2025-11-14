@@ -14,17 +14,18 @@ export const getServerSupabaseClient = cache(async () => {
         return cookieStore.get(name)?.value;
       },
       set(name, value, options) {
-        cookieStore.set({
-          name,
-          value,
-          ...options,
-        });
+        try {
+          cookieStore.set(name, value, options);
+        } catch {
+          // Ignore cookie setting errors in read-only contexts
+        }
       },
       remove(name, options) {
-        cookieStore.delete({
-          name,
-          ...options,
-        });
+        try {
+          cookieStore.delete(name, options);
+        } catch {
+          // Ignore cookie deletion errors in read-only contexts
+        }
       },
     },
   });

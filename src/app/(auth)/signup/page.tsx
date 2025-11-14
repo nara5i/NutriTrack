@@ -40,9 +40,16 @@ export default function SignupPage() {
     const formData = new FormData(form);
     const email = String(formData.get("email") ?? "").trim();
     const password = String(formData.get("password") ?? "");
+    const fullName = String(formData.get("fullName") ?? "").trim();
 
     if (!email || !password) {
       setError(requiredMessage);
+      setInfo(null);
+      return;
+    }
+
+    if (!fullName) {
+      setError("Please enter your name.");
       setInfo(null);
       return;
     }
@@ -58,7 +65,7 @@ export default function SignupPage() {
           "Content-Type": "application/json",
         },
         credentials: "same-origin",
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, fullName }),
       });
 
       const payload = (await response.json()) as
@@ -100,6 +107,17 @@ export default function SignupPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <input type="hidden" name="redirectTo" value={redirectTo} />
+          <label className="block">
+            <span className="text-sm font-medium text-slate-700">Full Name</span>
+            <input
+              type="text"
+              name="fullName"
+              required
+              className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-emerald-400 focus:bg-white focus:ring-2 focus:ring-emerald-100"
+              placeholder="John Doe"
+            />
+          </label>
+
           <label className="block">
             <span className="text-sm font-medium text-slate-700">Email</span>
             <input

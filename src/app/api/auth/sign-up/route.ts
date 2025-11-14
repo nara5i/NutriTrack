@@ -25,9 +25,19 @@ export async function POST(request: NextRequest) {
   const password = isNonEmptyString((body as Record<string, unknown>)?.password)
     ? (body as Record<string, unknown>).password
     : "";
+  const fullName = isNonEmptyString((body as Record<string, unknown>)?.fullName)
+    ? (body as Record<string, unknown>).fullName.trim()
+    : "";
 
   if (!email || !password) {
     return NextResponse.json({ error: requiredMessage }, { status: 400 });
+  }
+
+  if (!fullName) {
+    return NextResponse.json(
+      { error: "Full name is required." },
+      { status: 400 },
+    );
   }
 
   const pendingCookies: PendingCookie[] = [];
@@ -39,10 +49,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  if (data.user && data.session) {
+  // Save name to profile whether or not session exists (for email confirmation flow)
+  if (data.user) {
     const { error: profileError } = await supabase
       .from("user_profiles")
-      .upsert({ id: data.user.id }, { onConflict: "id" });
+      .upsert({ id: data.user.id, full_name: fullName }, { onConflict: "id" });
 
     if (profileError) {
       return NextResponse.json(
